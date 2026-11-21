@@ -12,107 +12,167 @@
 // ==/UserScript==
 
 (function () {
-  'use strict';
-  console.log('loaded');
+    'use strict';
+    let force_push = true;
+    let previous_url;
+    let current_url;
 
-  // Tower Page
-  if (location.pathname == '/tower') {
-    // Wait until content is loaded
-    let content_poller = setInterval(function() {
-      // Find equipment selector wrapper
-      let equipment_wrapper = document.querySelectorAll('[class^="tower_towerOptions__"]');
-      if(equipment_wrapper.length) {
-        // Stop retrying
-        clearInterval(content_poller);
+    window.navigation.addEventListener('navigate', function(e) {
+        // Need a wait period or else the code grabs the PREVIOUS URL
+        setTimeout(function(){
+            // Since logic is based on navigation changes, we need to force a nav change on the current page
+            //   in the event something needs to be kicked off.
+            let live_url = window.location.pathname.concat(window.location.search);
+            if(force_push) {
+                previous_url = live_url;
+                current_url = live_url.concat('#');
+                history.pushState({}, '', current_url);
+                force_push = false;
+            } else {
+                if(previous_url == current_url) {
+                    return;
+                }
+                
+                previous_url = current_url;
+                current_url = live_url;
+            }
 
-        let checkbox_id = 'equipment_toggle';
-        let cache_key = 'TOWER:EQUIPMENT:TOGGLE';
+            /* [Start] Page: Tower */
+            if (location.pathname == '/tower') {
+                // Wait until content is loaded
+                let content_poller = setInterval(function() {
+                    // Prevent duplicate inserts
+                    if(document.getElementById('pooper-scooper')){
+                        clearInterval(content_poller);
+                        return;
+                    }
 
-        // Insert "Hide Unused?" toggle
-        let equipment_toggle = create_checkbox(checkbox_id, 'Hide Unused?', cache_key);
-        equipment_wrapper[0].insertBefore(equipment_toggle, equipment_wrapper[0].firstChild);
+                    // Find equipment selector wrapper
+                    let equipment_wrapper = document.querySelectorAll('[class^="tower_towerOptions__"]');
+                    if(equipment_wrapper.length) {
+                        // Stop retrying
+                        clearInterval(content_poller);
+                        console.log('Page Loaded: Tower');
 
-        let equipment_toggle_checkbox = document.getElementById(checkbox_id);
-        let card_class = 'ItemCard_card__';
-        let card_exclusion_class = 'ItemCard_selected__'
-        // Do initial toggle
-        toggle_visibility(equipment_toggle_checkbox.checked, card_class, card_exclusion_class);
+                        /* [Start] Feature: Toggle Unused Equipment */
+                        let checkbox_id = 'equipment_toggle';
+                        let cache_key = 'TOWER:EQUIPMENT:TOGGLE';
 
-        equipment_toggle_checkbox.addEventListener('click', function() {
-          toggle_visibility(equipment_toggle_checkbox.checked, card_class, card_exclusion_class);
-          // Save checkbox state to local storage
-          save_to_storage(cache_key, this.checked);
+                        // Insert "Hide Unused?" toggle
+                        let equipment_toggle = create_checkbox(checkbox_id, 'Hide Unused?', cache_key);
+                        equipment_wrapper[0].insertBefore(equipment_toggle, equipment_wrapper[0].firstChild);
 
+                        let equipment_toggle_checkbox = document.getElementById(checkbox_id);
+                        let card_class = 'ItemCard_card__';
+                        let card_exclusion_class = 'ItemCard_selected__'
+                        // Do initial toggle
+                        toggle_visibility(equipment_toggle_checkbox.checked, card_class, card_exclusion_class);
+
+                        equipment_toggle_checkbox.addEventListener('click', function() {
+                        toggle_visibility(equipment_toggle_checkbox.checked, card_class, card_exclusion_class);
+                        // Save checkbox state to local storage
+                        save_to_storage(cache_key, this.checked);
+                        });
+                        console.log('Feature Loaded: Toggle Unused Equipment');
+                        /* [End] Feature: Toggle Unused Equipment */
+                    }
+                }, 100);
+            }
+            /* [End] Page: Tower */
+
+            /* [Start] Page: Collection */
+            if (location.pathname.startsWith('/collection')) {
+                // Wait until content is loaded
+                let content_poller = setInterval(function() {
+                    // Find collection wrapper
+                    let collection_wrapper = document.querySelectorAll('[class^="ItemGrid_grid__"]');
+                    if(collection_wrapper.length) {
+                        // Stop retrying
+                        clearInterval(content_poller);
+
+                        /* [Start] Data Save: Collection for Dog */
+                        // Get dog number and collection
+                        let slice = location.pathname.split('/').slice(-2);
+                        let dog_number = slice[0];
+                        let collection = slice[1];
+
+                        // Log collection for current dog
+                        let read_books = []
+                        for(let item of collection_wrapper[0].children) {
+                            read_books.push(item.firstChild.firstChild.src.split('/').pop());
+                        }
+
+                        let cache_key = 'COLLECTION:'.concat(collection.toUpperCase(), ':DOG-', dog_number);
+                        save_to_storage(cache_key, read_books);
+                        console.log('Data Saved: Collection for Dog');
+                        /* [End] Data Save: Collection for Dog */
+                    }
+                }, 100);
+            }
+            /* [End] Page: Collection */
         });
-      }
-    }, 100);
-  }
+    });
 })();
 
 /* Functions */
 
 // Local browser storage access
 function save_to_storage(cache_key, value) {
-  localStorage.setItem('POOPER_SCOPPER::'.concat(cache_key), value);
+    localStorage.setItem('POOPER_SCOOPER::'.concat(cache_key), value);
 }
 
 function get_from_storage(cache_key) {
-  return localStorage.getItem('POOPER_SCOPPER::'.concat(cache_key));
+    return localStorage.getItem('POOPER_SCOOPER::'.concat(cache_key));
 }
 
 function create_checkbox(id_text, label_text, cache_key) {
-  // Create Checkbox
-  let checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.id = id_text;
-
-  console.log('cache_key', get_from_storage(cache_key));
-
-  checkbox.checked = get_from_storage(cache_key);
-
-  // Create Label
-  let label_text_node = document.createTextNode(label_text);
-  let label = document.createElement('label');
-  label.htmlFor = id_text;
-  label.appendChild(label_text_node);
-
-  // Append to container and return
-  let container = document.createElement('div');
-  container.appendChild(checkbox);
-  container.appendChild(label);
-
-  // Add styles
-  container.style.border = '2px dashed #aaaaaa';
-  return container;
+    // Create Checkbox
+    let checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = id_text;  
+    checkbox.checked = get_from_storage(cache_key); 
+    
+    // Create Label
+    let label_text_node = document.createTextNode(label_text);
+    let label = document.createElement('label');
+    label.htmlFor = id_text;
+    label.appendChild(label_text_node); 
+    
+    // Append to container and return
+    let container = document.createElement('div');
+    container.id = 'pooper-scooper';
+    container.appendChild(checkbox);
+    container.appendChild(label);   
+    
+    // Add styles
+    container.style.border = '2px dashed #aaaaaa';
+    return container;
 }
 
 function get_by_class(element_class, exclusion_class = null) {
-  if(exclusion_class) {
-    return document.querySelectorAll('[class*="'.concat(element_class, '"]:not([class*="', exclusion_class,'"])'));
-  } else {
-    return document.querySelectorAll('[class*="'.concat(element_class, '"]'));
-  }
+    if(exclusion_class) {
+        return document.querySelectorAll('[class*="'.concat(element_class, '"]:not([class*="', exclusion_class,'"])'));
+    } else {
+        return document.querySelectorAll('[class*="'.concat(element_class, '"]'));
+    }
 }
 
 function show_all(element_class, exclusion_class = null) {
-  get_by_class(element_class, exclusion_class).forEach(function(item) {
-    console.log('show', item);
-    item.style.display = 'block';
-  });
+    get_by_class(element_class, exclusion_class).forEach(function(item) {
+        item.style.display = 'block';
+    });
 }
 
 function hide_all(element_class, exclusion_class = null) {
-  get_by_class(element_class, exclusion_class).forEach(function(item) {
-    item.style.display = 'none';
-  });
+    get_by_class(element_class, exclusion_class).forEach(function(item) {
+        item.style.display = 'none';
+    });
 }
 
 function toggle_visibility(hide_elements, element_class, exclusion_class = null) {
-  console.log('TOGGLE CHECK', hide_elements, element_class, exclusion_class);
-
-  if(hide_elements) {
-    hide_all(element_class, exclusion_class);
-  } else {
-    show_all(element_class, exclusion_class);
-  }
+    if(hide_elements) {
+        hide_all(element_class, exclusion_class);
+    } else {
+        show_all(element_class, exclusion_class);
+    }
 }
