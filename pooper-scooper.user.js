@@ -89,6 +89,8 @@
                     if(collection_wrapper.length) {
                         // Stop retrying
                         clearInterval(content_poller);
+                        console.log('Page Loaded: Collection');
+
 
                         /* [Start] Data Save: Collection for Dog */
                         // Get dog number and collection
@@ -110,6 +112,59 @@
                 }, 100);
             }
             /* [End] Page: Collection */
+
+            /* [Start] Page: Shop: Cozy */
+            if (location.pathname.startsWith('/shop/cozy')) {
+                // Wait until content is loaded
+                let content_poller = setInterval(function() {
+                    // Prevent duplicate inserts
+                    if(document.getElementById('pooper-scooper')){
+                        clearInterval(content_poller);
+                        return;
+                    }
+
+                    // Find collection wrapper
+                    let collection_wrapper = document.querySelectorAll('[class^="ItemGrid_grid__"]');
+                    if(collection_wrapper.length) {
+                        // Stop retrying
+                        clearInterval(content_poller);
+                        console.log('Page Loaded: Cozy');
+
+                        /* [Start] Feature: Grey-out Read Books */
+                        // Get cache of read books, if available. Requires visiting the collection page first.
+                        let read_books = [];
+                        [0, 1, 2].forEach(function(dog_number){
+                            let cache_key = 'COLLECTION:BOOKS:DOG-'.concat(dog_number);
+                            let cached_books = get_from_storage(cache_key);
+                            if(cached_books){
+                                cached_books = cached_books.split(',');
+                            }
+
+                            read_books = read_books.concat(cached_books);
+                        });
+
+                        // Check to see if the books on sale are in the read books list.
+                        // Grey them out if have been read by ANY dog.
+                        //
+                        // TODO: Make this per-dog or show read state per dog.
+                        for(let item of collection_wrapper[0].children) {
+                            let book = item.firstChild.firstChild.src.split('/').pop();
+                            if(read_books.includes(book)){
+                                item.style.opacity = 0.25;
+                            }
+                        }
+
+                        // Add the #pooper-scooper div so this does not re-process.
+                        //
+                        // TODO: Find a better way to prevent duplicate processing, which seems to happen a lot.
+                        let container = document.createElement('div');
+                        container.id = 'pooper-scooper';
+                        collection_wrapper[0].appendChild(container);
+                        /* [End] Feature: Grey-out Read Books */
+                    }
+                }, 100);
+            }
+            /* [End] Page: Shop: Cozy */
         });
     });
 })();
