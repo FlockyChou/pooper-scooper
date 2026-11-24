@@ -16,12 +16,9 @@
 
     const COLLECTIONS = [
         'BOOKS',
-        'FOOD'
+        'FOOD',
+        'TOYS'
     ];
-    const ADJECTIVE_MAP = {
-        'BOOKS': 'Read',
-        'FOOD': 'Eaten'
-    };
 
     let previous_url;
     let current_url;
@@ -48,7 +45,6 @@
                     if(equipment_wrapper.length) {
                         // Stop retrying
                         clearInterval(content_poller);
-                        console.log('Page Loaded: Tower');
 
                         /* [Start] Feature: Toggle Unused Equipment */
                         let checkbox_id = 'equipment_toggle';
@@ -60,18 +56,17 @@
 
                         let equipment_toggle_checkbox = document.getElementById(checkbox_id);
                         let card_class = 'ItemCard_card__';
-                        let card_exclusion_class = 'ItemCard_selected__'
+                        let card_exclusion_class = 'ItemCard_selected__';
 
                         // Do initial toggle
                         toggle_visibility(equipment_toggle_checkbox.checked, card_class, card_exclusion_class);
 
                         equipment_toggle_checkbox.addEventListener('click', function() {
-                        toggle_visibility(equipment_toggle_checkbox.checked, card_class, card_exclusion_class);
-                        
-                        // Save checkbox state to local storage
-                        save_to_storage(cache_key, this.checked);
+                            toggle_visibility(equipment_toggle_checkbox.checked, card_class, card_exclusion_class);
+                            
+                            // Save checkbox state to local storage
+                            save_to_storage(cache_key, this.checked);
                         });
-                        console.log('Feature Loaded: Toggle Unused Equipment');
                         /* [End] Feature: Toggle Unused Equipment */
                     }
                 }, 100);
@@ -109,6 +104,33 @@
                 }, 100);
             }
             /* [End] Page: Collection */
+
+            /* [Start] Page: Toys */
+            if (location.pathname.startsWith('/doghouse/toybox')) {
+                // Wait until content is loaded
+                let content_poller = setInterval(function() {
+                    // Find collection wrapper
+                    let collection_wrapper = document.querySelectorAll('[class^="ItemGrid_grid__"]');
+                    if(collection_wrapper.length) {
+                        // Stop retrying
+                        clearInterval(content_poller);
+                        console.log('Page Loaded: Toys');
+
+                        /* [Start] Data Save: Toys */
+                        let collection_set = []
+                        for(let item of collection_wrapper[0].children) {
+                            collection_set.push(item.firstChild.firstChild.src.split('/').pop());
+                        }
+
+                        // Always save to Dog 0 so I can reuse existing logic.
+                        let cache_key = 'COLLECTION:'.concat('TOYS:DOG-0');
+                        save_to_storage(cache_key, collection_set);
+                        console.log('Data Saved: Toys');
+                        /* [End] Data Save: Toys */
+                    }
+                }, 100);
+            }
+            /* [End] Page: Toys */
 
             /* [Start] Page: Shop: Store */
             if (location.pathname.startsWith('/shop')) {
@@ -159,6 +181,7 @@
                         let cache_key = 'SHOP:COLLECTED:TOGGLE';
 
                         // Insert "Dim Collected?" toggle
+                        console.log(cache_key, get_from_storage(cache_key));
                         let collection_toggle = create_checkbox(checkbox_id, 'Dim Collected?', cache_key);
                         collection_wrapper[0].insertBefore(collection_toggle, collection_wrapper[0].firstChild);
 
@@ -171,6 +194,7 @@
                             toggle_opacity(collection_toggle_checkbox.checked, 'collected');
                             
                             // Save checkbox state to local storage
+                            console.log(cache_key, this.checked);
                             save_to_storage(cache_key, this.checked);
                         });
                         console.log('Feature Loaded: Toggle Unused Equipment');
@@ -198,8 +222,11 @@ function create_checkbox(id_text, label_text, cache_key) {
     // Create Checkbox
     let checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.id = id_text;  
-    checkbox.checked = get_from_storage(cache_key); 
+    checkbox.id = id_text;
+
+    if(get_from_storage(cache_key) == 'true') {
+        checkbox.checked = true;
+    } 
     
     // Create Label
     let label_text_node = document.createTextNode(label_text);
